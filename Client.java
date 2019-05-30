@@ -1,52 +1,120 @@
 // import libraries
+
 import java.io.IOException;
+
+import java.awt.BorderLayout;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.BindException;
 
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.function.Consumer;
+
+import javax.swing.JFrame;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+
+// frame class (swing)
+@SuppressWarnings("serial") // serializable warning
+class ClientForm extends JFrame {
+  // fields
+  JTextArea textArea = null;
+
+  /**
+   * constructor
+   * 
+   * @param send callback
+   */
+  public ClientForm (Consumer<String> send) {
+    // set visible
+    setVisible(true);
+
+    // text field
+    JTextField textField = new JTextField(15);
+    textField.addActionListener(evt -> {
+      send.accept(textField.getText());
+    });
+
+    // text area
+    textArea = new JTextArea(10, 30);
+    textArea.setEditable(false);
+
+    // add elements and "pack" this frame
+    add(textField, BorderLayout.PAGE_END);
+    add(textArea, BorderLayout.CENTER);
+    pack();
+  }
+
+  public void updateMessage (String msg) {
+    textArea.append(msg + "\n");
+  }
+}
 
 // client class
 public class Client {
-  // main method
+  // sendor fields
+  private static DatagramSocket sendorSock = null;
+  private static InetAddress addr = null;
+  private static ClientForm clientForm = null;
+
+  /**
+   * main
+   * 
+   * @param args
+   * @throws IOException
+   */
   public static void main (String... args) throws IOException {
-    // call methods
-    sendor();
-    // receiver();
+    initSendor();
+    receiver();
   }
 
-  private static void sendor () throws IOException {
-    // init socket, address
-    DatagramSocket sock = new DatagramSocket();
-    InetAddress addr = InetAddress.getByName("127.0.0.1");
+  /**
+   * init sendor
+   * 
+   * @throws IOException
+   */
+  private static void initSendor() throws IOException {
+    // init fields
+    sendorSock = new DatagramSocket();
+    addr = InetAddress.getByName("127.0.0.1"); // host ip (localhost)
 
-    // init scanner, message object
-    Scanner sc = new Scanner(System.in);
-    String message = null;
+    // create client frame
+    clientForm = new ClientForm(text -> { // with callback
+      sendor(text); // send to message
 
-    // send loop
-    do {
-      // get message
-      message = sc.nextLine();
-      
-      // convert to binary
-      byte[] buf = (message + " ").getBytes();
-      
-      // init packet (server port: 10100)
-      DatagramPacket pack = new DatagramPacket(buf, buf.length, addr, 10100);
-
-      // send packet
-      sock.send(pack);
-    } while (!message.equals("exit"));
-
-    sc.close();
-    sock.close();
+      // "> close": exit command
+      if (text.equals("> close")) {
+        sendorSock.close(); // close socket
+        System.exit(0); // end client
+      }
+    });
   }
 
-  private static void receiver () {
+  /**
+   * send message to server
+   * 
+   * @param message
+   */
+  private static void sendor (String message) {
+    // convert to binary
+    byte[] buf = (message + " ").getBytes();
+
+    // declare packet instance
+    DatagramPacket pack = null;
+
+    // init packet (server port: 10100)
+    pack = new DatagramPacket(buf, buf.length, addr, 10100);
+
+    try {
+      // send packet(message) to server
+      sendorSock.send(pack);
+    } catch (IOException e) {
+      System.out.println("Failed to send");
+    }
+  }
+
+  private static void receiver () throws IOException {
     // declare socket
     DatagramSocket sock = null;
     int startPortNumber = 10101; // client port num: 10101 ~
@@ -55,28 +123,39 @@ public class Client {
     while (sock == null) {
       try {
         sock = new DatagramSocket(startPortNumber);
-      } catch (BindException be) {
+      } catch (BindException be) { // port is already uses
         startPortNumber++;
         continue;
       }
     }
 
     // print port num
-    Sysmte.out.println("socket opened! >> port: " + startPortNumber);
+    System.out.println("socket opened! >> port: " + startPortNumber);
 
-    // init buffer, packet
-    byte[] buf = new byte[256]; // need guard
+    // init port
+    sendor("//port:" + startPortNumber + "|" + "Darwin");
+
+    // declare buffer, packet
+    byte[] buf = null;
+    DatagramPacket pack = null;
+
     String message = null;
-    DatagramPacket pack = new DatagramPacket(buf, buf.length);
 
     // serve loop
     do {
+      // define buffer, packet (for "fflush")
+      buf = new byte[256];
+      pack = new DatagramPacket(buf, buf.length);
+
       // wait until receive
       sock.receive(pack);
 
       // convert message
       message = new String(buf);
-      System.out.println(message);
+      System.out.println(">> " + message);
+
+      // append message to text area
+      clientForm.updateMessage(message);
     } while (!message.equals("exit"));
 
     // close socket
