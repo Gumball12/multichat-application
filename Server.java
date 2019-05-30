@@ -1,21 +1,29 @@
+// import modules
 import java.io.IOException;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
+// server class
 public class Server {
   public static void main (String... args) throws IOException {
-    // init socket, packet
-    DatagramSocket sock = new DatagramSocket(10101);
-    byte[] buf = new byte[256];
-    DatagramPacket p = new DatagramPacket(buf, buf.length);
-
-    // init user lists
+    // define socket
+    DatagramSocket sock = new DatagramSocket(10100); // server: 10100
+    
+    // init buffer, packet
+    byte[] buf = new byte[256]; // need guard
+    String message = null;
+    DatagramPacket pack = new DatagramPacket(buf, buf.length);
 
     // serve loop
-    for (int i = 0; i < 100; i++) {
-      sock.receive(p);
-      System.out.println(new String(buf));
-    }
+    do {
+      // wait until receive
+      sock.receive(pack);
+
+      // convert message
+      message = new String(buf);
+      System.out.println(message);
+    } while (!message.equals("exit"));
 
     // close socket
     sock.close();
