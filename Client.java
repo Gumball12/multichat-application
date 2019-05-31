@@ -1,3 +1,11 @@
+/**
+ * java multi-chat application (Client-side)
+ * 
+ * @author HeaJun Seo
+ * @since 2019-05-31
+ * @repo https://github.com/Gumball12/multichat-application
+ */
+
 // import libraries
 
 import java.io.IOException;
