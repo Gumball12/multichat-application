@@ -7,7 +7,6 @@
  */
 
 // import libraries
-
 import java.io.IOException;
 
 import java.awt.BorderLayout;
@@ -17,10 +16,14 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.BindException;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 
+import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
@@ -29,6 +32,7 @@ import javax.swing.JTextField;
 class ClientForm extends JFrame {
   // fields
   JTextArea textArea = null;
+  DefaultListModel<String> userList = null;
 
   /**
    * constructor
@@ -36,9 +40,6 @@ class ClientForm extends JFrame {
    * @param send callback
    */
   public ClientForm (Consumer<String> send) {
-    // set visible
-    setVisible(true);
-
     // text field
     JTextField textField = new JTextField(15);
     textField.addActionListener(evt -> {
@@ -50,10 +51,19 @@ class ClientForm extends JFrame {
     textArea = new JTextArea(10, 30);
     textArea.setEditable(false);
 
+    // user lists
+    userList = new DefaultListModel<String>();
+    JList listPanel = new JList(userList);
+
     // add elements and "pack" this frame
     add(textField, BorderLayout.PAGE_END);
-    add(textArea, BorderLayout.CENTER);
+    add(new JScrollPane(textArea), BorderLayout.CENTER); // with scroll bar
+    add(new JScrollPane(listPanel), BorderLayout.EAST); // with scroll bar
+
     pack();
+    
+    // set frame visibility
+    setVisible(true);
   }
 
   /**
@@ -63,12 +73,23 @@ class ClientForm extends JFrame {
    */
   public void updateMessage (String msg) {
     textArea.append(msg + "\n");
+    textArea.setCaretPosition(textArea.getDocument().getLength()); // scroll to bottom
+  }
+
+  /**
+   * update userlist
+   * 
+   * @param users username list
+   */
+  public void updateUser (String[] users) {
+    userList.clear();
+    Arrays.asList(users).forEach(user -> { userList.addElement(user); });
   }
 }
 
 // client class
 public class Client {
-  // sendor fields
+  // fields
   private static DatagramSocket sendorSock = null;
   private static InetAddress addr = null;
   private static ClientForm clientForm = null;
@@ -103,6 +124,7 @@ public class Client {
 
       // "> close": exit command
       if (text.equals("> close")) {
+        System.out.println("!" + port);
         sendor("//close:" + port + "|" + username, true);
         sendorSock.close(); // close socket
         System.exit(0); // end client
@@ -181,11 +203,19 @@ public class Client {
       sock.receive(pack);
 
       // convert message
-      message = new String(buf);
-      System.out.println(">> " + message);
+      message = new String(buf).trim();
+      System.out.println(message);
+
+      // get datas
+      String[] datas = message.split("\\&"); // [0]: users, [1]: msg
+      String[] users = datas[0].substring(6).split("\\|");
+      String msg = datas[1].substring(4);
+
+      // update userlist
+      clientForm.updateUser(users);
 
       // append message to text area
-      clientForm.updateMessage(message);
+      clientForm.updateMessage(msg);
     } while (!message.equals("exit"));
 
     // close socket
