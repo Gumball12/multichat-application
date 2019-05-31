@@ -12,6 +12,7 @@ import java.net.BindException;
 import java.util.function.Consumer;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
@@ -33,7 +34,8 @@ class ClientForm extends JFrame {
     // text field
     JTextField textField = new JTextField(15);
     textField.addActionListener(evt -> {
-      send.accept(textField.getText());
+      send.accept(textField.getText()); // call callback function
+      textField.setText(""); // clear text
     });
 
     // text area
@@ -46,6 +48,11 @@ class ClientForm extends JFrame {
     pack();
   }
 
+  /**
+   * append message to text area
+   * 
+   * @param msg
+   */
   public void updateMessage (String msg) {
     textArea.append(msg + "\n");
   }
@@ -57,6 +64,9 @@ public class Client {
   private static DatagramSocket sendorSock = null;
   private static InetAddress addr = null;
   private static ClientForm clientForm = null;
+
+  private static String username = null;
+  private static String port = null;
 
   /**
    * main
@@ -81,10 +91,11 @@ public class Client {
 
     // create client frame
     clientForm = new ClientForm(text -> { // with callback
-      sendor(text); // send to message
+      sendor(text, false); // send to message
 
       // "> close": exit command
       if (text.equals("> close")) {
+        sendor("//close:" + port + "|" + username, true);
         sendorSock.close(); // close socket
         System.exit(0); // end client
       }
@@ -96,9 +107,9 @@ public class Client {
    * 
    * @param message
    */
-  private static void sendor (String message) {
+  private static void sendor (String message, boolean isCommand) {
     // convert to binary
-    byte[] buf = (message + " ").getBytes();
+    byte[] buf = ((isCommand == false ? username + ": " : "") + message + " ").getBytes();
 
     // declare packet instance
     DatagramPacket pack = null;
@@ -114,6 +125,11 @@ public class Client {
     }
   }
 
+  /**
+   * receive server messages
+   * 
+   * @throws IOException
+   */
   private static void receiver () throws IOException {
     // declare socket
     DatagramSocket sock = null;
@@ -122,7 +138,8 @@ public class Client {
     // get available port
     while (sock == null) {
       try {
-        sock = new DatagramSocket(startPortNumber);
+        sock = new DatagramSocket(startPortNumber); // get socket with "available" port
+        port = String.valueOf(startPortNumber); // itos
       } catch (BindException be) { // port is already uses
         startPortNumber++;
         continue;
@@ -130,10 +147,15 @@ public class Client {
     }
 
     // print port num
-    System.out.println("socket opened! >> port: " + startPortNumber);
+    System.out.println("socket opened! >> port: " + port);
+
+    // get user name
+    do {
+      username = JOptionPane.showInputDialog(null, "이름을 입력해주세요");
+    } while (username == null);
 
     // init port
-    sendor("//port:" + startPortNumber + "|" + "Darwin");
+    sendor("//port:" + port + "|" + username, true);
 
     // declare buffer, packet
     byte[] buf = null;
