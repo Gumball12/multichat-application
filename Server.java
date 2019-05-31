@@ -64,12 +64,12 @@ public class Server {
           // add user
           String[] userdata = message.substring(7).split("\\|"); // get port(0) and username(1) using regular expression
           users.put(userdata[0], userdata[1]); // set user data
-          sendor(userdata[1] + " 입장");
+          sendor(">> " + userdata[1] + " 입장");
         } else if (message.matches("^//close:.*")) {
           // remove user
-          String[] userdata = message.substring(9).split("\\|"); // get userdata (port: [0], username: [1])
+          String[] userdata = message.substring(8).split("\\|"); // get userdata (port: [0], username: [1])
           users.remove(userdata[0]); // using port number
-          sendor(userdata[1] + " 퇴장");
+          sendor(">> " + userdata[1] + " 퇴장");
         } else {
           // send message to users
           sendor(message);
@@ -78,9 +78,14 @@ public class Server {
     }
   }
 
+  /**
+   * send message to all clients
+   * 
+   * @param message
+   */
   private static void sendor (String message) {
-    // conv to binary
-    byte[] buf = (message + " ").getBytes();
+    // conv to binary (http GET-like)
+    byte[] buf = ("users=" + String.join("|", users.values()) + "&msg=" + message + " ").getBytes();
 
     // to all clients
     users.keySet().forEach(key -> {
