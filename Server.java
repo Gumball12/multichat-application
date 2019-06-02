@@ -38,8 +38,8 @@ public class Server {
     // define socket (try-with resource statement)
     try (DatagramSocket sock = new DatagramSocket(10100)) { // server: 10100      
       // declare buffer, packet
-      byte[] buf = new byte[256];
-      DatagramPacket pack = new DatagramPacket(buf, buf.length);
+      byte[] buf = null;
+      DatagramPacket pack = null;
 
       String message = null;
 
